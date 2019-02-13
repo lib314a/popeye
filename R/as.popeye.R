@@ -14,12 +14,6 @@ as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
   #   An object of popeye class
 
   # Messages
-  mesCED.1 <-
-  "The eye data is not in a proper format, please input the correct paths of
-  the uncorrected asc files, or input the uncorrected asc data with
-  popeye::read.asc.file..." 
-  mesCED.2 <-
-  "Non-identical trial numbers in eye data, the trial numbers are:"
   mesCED.3 <-
   "Setting the first two columns of eye data as x and y; if no columns named x
   and y are found, the first two columns will be renamed to x and y..." 
@@ -31,28 +25,46 @@ as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
   mesCIT.2 <- 
   "Please input csv files as IA tables..."
 
-  # Check eye data -------------------------------------------------------------
-  if(is.file(eye_data)) {
+  # Check the type of eye data -------------------------------------------------
+
+  # If file names are fed in...
+  if (is.file(eye_data))
+
+    # ... read em.
     asc <- lapply(eye_data, read.asc.file, start_flag = start_flag)
-  }else{
-    expect_name <- sort(c( "fix_data", "n_trials", "dur_summary",
-      "trial_id_start", "trial_start", "trial_end"))
+
+  # If ASC data are fed in...
+  else
+
+  {
+    expect_name <- sort(c( "fix_data", "n_trials", "dur_summary", "trial_id_start", "trial_start", "trial_end"))
     asc_name <- sort(names(eye_data))
-    if(!identical(expect_name, asc_name))
-    {
-      message(mesCED.1)
-      return(invisible())
-    } else {
+
+    # ... and if the variable names are identical to expected names ...
+    if (identical(expect_name, asc_name))
+
+      # ... rename them, ...
       asc <- eye_data
+
+    # ... else report error.
+    else
+
+    {
+      message( "The eye data is not in a proper format, please input the correct paths of the uncorrected asc files, or input the uncorrected asc data with popeye::read.asc.file..." )
+      return(invisible())
     }
   }
 
-  # Check if all items in *asc have the same trial number
+  # Check trial numbers in ASC object ------------------------------------------
   trial.n <- vapply(asc, function(x) x$n_trials, integer(1))
-  asc.trial.yes <- (sum(!duplicated(trial.n)) == 1)
-  if(!asc.trial.yes) {
-    message(mesCED.2)
+  asc.trial.yes <- sum(!duplicated(trial.n)) == 1
+
+  if(!asc.trial.yes)
+
+  {
+    message( "Non-identical trial numbers in eye data, the trial numbers are:")
     sapply(capture.output(trial.n), message)
+
     return(invisible())
   }
 
