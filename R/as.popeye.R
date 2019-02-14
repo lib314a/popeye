@@ -1,29 +1,24 @@
-as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
-  start_flag = 'TRIALID', corrected = FALSE)
-{
+as.popeye <- function(
+  eye_data
+  , back_images
+  , ia_tables
+  , ia_labels = NULL
+  , ia_tables_header = F
+  , start_flag = 'TRIALID'
+  , corrected = FALSE
+){
   # This function concatenates eye tracking data, table of coordinates
   #
   # Args:
-  #   eye_data: Either a vector of the names of a 
-  #   ia_tables: Either a vector of the names of csv files containing the
+  #   eye_data: either a vector of the names of a 
+  #   ia_tables: either a vector of the names of csv files containing the
   #     coordinates of all interest areas
-  #   back_images: Either a vector of the names of... must be raster images
+  #   back_images: either a vector of the names of... must be raster images
   #   corrected: whether raw/uncorrected eyetracking data or not
+  #   start_flag: this argument will be ignored if eye_data is of ASC format
   #
   # Return:
   #   An object of popeye class
-
-  # Messages
-  mesCED.3 <-
-  "Setting the first two columns of eye data as x and y; if no columns named x
-  and y are found, the first two columns will be renamed to x and y..." 
-  mesCBI.1 <-
-  "Please input background images as png..."
-  mesCIT.1 <-
-  "Setting the first four columns of IA tables as (t)op, (b)ottom, (l)eft,
-  (r)ight..." 
-  mesCIT.2 <- 
-  "Please input csv files as IA tables..."
 
   # Check the type of eye data -------------------------------------------------
 
@@ -37,7 +32,7 @@ as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
   else
 
   {
-    expect_name <- sort(c( "fix_data", "n_trials", "dur_summary", "trial_id_start", "trial_start", "trial_end"))
+    expect_name <- sort(c("fix_data", "n_trials", "dur_summary", "trial_id_start", "trial_start", "trial_end"))
     asc_name <- sort(names(eye_data))
 
     # ... and if the variable names are identical to expected names ...
@@ -50,7 +45,7 @@ as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
     else
 
     {
-      message( "The eye data is not in a proper format, please input the correct paths of the uncorrected asc files, or input the uncorrected asc data with popeye::read.asc.file..." )
+      message("The eye data is not in a proper format, please input the correct paths of the uncorrected asc files, or input the uncorrected asc data with popeye::read.asc.file..." )
       return(invisible())
     }
   }
@@ -62,23 +57,32 @@ as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
   if(!asc.trial.yes)
 
   {
-    message( "Non-identical trial numbers in eye data, the trial numbers are:")
+    message("Non-identical trial numbers in eye data, the trial numbers are:")
     sapply(capture.output(trial.n), message)
 
     return(invisible())
   }
 
-  # Check if the first two columns are x and y coordinates, or change them to
-  message(mesCED.3)
+  # Check coordinates ----------------------------------------------------------
+  message("Setting the first two columns of eye data as x and y; if no columns named x and y are found, the first two columns will be renamed to x and y...")
   asc <- lapply(
     asc,
     function(x){
       x$fix_data <- lapply(
         x$fix_data,
         function(y){
-          if(sum(startAscName %in% colnames(y)) == 2){
+
+          # If the first two columns are x and y...
+          if (sum(startAscName %in% colnames(y)) == 2)
+
+            # ... match them to the predefined name sequence.
             y[, order(match(colnames(y), startAscName))]
-          }else{
+
+          # Else...
+          else
+
+          {
+            # ... change them to the predefined name sequence.
             colnames(x)[1:2] <- startAscName
             y
           }
@@ -97,10 +101,20 @@ as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
     function(x){
       within(
         x,
+
         names(fix_data) <- paste(stimPrefix, 1:n_trials, sep = '')
+
       )
     }
   )
+
+  # Split meta info from *asc --------------------------------------------------
+
+  # Create *meta
+  meta <- lapply(asc, function(x) {x$fix_data <- NULL; x})
+
+  # Redefine *asc
+  asc  <- lapply(asc, function(x) x$fix_data)
 
   # Check backgroud images -----------------------------------------------------
   if(is.file(back_images)){
@@ -110,7 +124,7 @@ as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
     if(sum(suffices == imageType) == length(suffices)) {
       bim <- lapply(back_images, png::readPNG)
     }else{
-      message(mesCBI.1)
+      message("Please input background images as png...")
       return(invisible())
     }
   }else{
@@ -121,7 +135,7 @@ as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
   names(bim) <- paste(stimPrefix, 1:length(bim), sep = '')
 
   # Check ia tables ------------------------------------------------------------
-  message(mesCIT.1)
+  message("Setting the first four columns of IA tables as (t)op, (b)ottom, (l)eft, (r)ight...")
 
   if(is.file(ia_tables)){
     # Check file types
@@ -131,9 +145,9 @@ as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
       character(1)
     )
     if(sum(suffices == tableType) == length(suffices)){
-      ia <- lapply(ia_tables, read.csv)
+      ia <- lapply(ia_tables, read.csv, header = ia_tables_header)
     }else{
-      message(mesCIT.1)
+      message("Setting the first four columns of IA tables as (t)op, (b)ottom, (l)eft, (r)ight...")
       return(invisible())
     }
   }else{
@@ -160,31 +174,32 @@ as.popeye <- function(eye_data, back_images, ia_tables, ia_labels = NULL,
   # Check if *bim and *ia have the same length (trial number)
   stim.trial.yes <- (length(ia) == length(bim))
   if(!stim.trial.yes){
-    message(
-      'IA tables and background images have different numbers, the number of IA
-      tables is ', length(ia), ', the number of background images is ',
-      length(bim)
-    )
+    message('IA tables and background images have different numbers, the number of IA tables is ', length(ia), ', the number of background images is ', length(bim))
     return(invisible())
   }
 
   # Check if trial number equals to lengths of *ia and *bim
   if(trial.n != length(ia)){
-    message(
-      "The number of trials in eye data doesn't match the number of stimuli.
-      There are ", length(ia), " stimuli, while ", trial.n, " trials in eye
-      data."
-    )
+    message("The number of trials in eye data doesn't match the number of stimuli.  There are ", length(ia), " stimuli, while ", trial.n, " trials in eye data.")
     return(invisible())
   }
 
   # Check IA labels ------------------------------------------------------------
   if(is.null(ia_labels)) ia_labels <- lapply(ia, function(x) 1:nrow(x))
 
-  # Concatenate eye tracking data, interest areas, and underlay images, and make
-  # popeye data
-  r <- list(data = asc, interest = ia, underlay = bim, labels = ia_labels, 
-    asc_file = lapply(eye_data, readLines), start_flag = start_flag)
+  # Construct popeye object ----------------------------------------------------
+  r <- list(
+    # Main contents:
+    data = asc
+    , meta = meta
+    , underlay = bim
+    , interest = ia
+    , labels = ia_labels
+
+    # Other contents:
+    , asc_file = lapply(eye_data, readLines)
+    , start_flag = start_flag
+  )
   # TODO: Read ASC files from disk rather than store them in the object
   class(r) <- c('popeye', if(!corrected) 'uncorrected' else 'corrected')
 

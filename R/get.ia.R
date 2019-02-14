@@ -14,11 +14,10 @@ get.ia <- function(x, subj = NULL, trial = NULL)
   ia   <- x$interest
   lab  <- x$labels
 
-  # Check if *x is a popeye object
-  if(!('popeye' %in% class(x))){
-    message("Not a popeye object.")
-    return(invisible())
-  }
+  # Check if *x is a popeye object ---------------------------------------------
+
+  if (!('popeye' %in% class(x)))
+    stop(simpleError("Not a popeye object."))
 
   # Check if subjects specified
   if(is.null(subj))
@@ -41,19 +40,19 @@ get.ia <- function(x, subj = NULL, trial = NULL)
       r.df <- lapply(
         trial,
         function(j){
-          fix <- data[[i]][['fix_data']][[j]]
+          fix <- data[[i]][[j]]
           ia  <- ia[[j]]
           lab <- lab[[j]]
 
           message("Trial: ", j, "...")
-          #sapply(capture.output(apply(fix, 2, class)), message)
-          #sapply(capture.output(apply(ia, 2, class)), message)
-          #sapply(capture.output(class(lab)), message)
+#          sapply(capture.output(apply(fix, 2, class)), message)
+#          sapply(capture.output(apply(ia, 2, class)), message)
+#          sapply(capture.output(class(lab)), message)
 
           mapFix2Ia(fix, ia, lab)
         }
       )
-      names(r.df) <- names(data[[i]][['fix_data']])
+      names(r.df) <- names(data[[i]])
       r.df
     }
   )
