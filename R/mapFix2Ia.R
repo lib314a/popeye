@@ -29,8 +29,8 @@ mapFix2Ia <- function(fix, areas, labels)
   # Map fixation to interest areas
   r.labels  <- apply(fix, 1, function(x){
 
-      fix.x <- as.integer(x[1])
-      fix.y <- as.integer(x[2])
+      fix.x <- as.integer(x[colnames(fix)=='x'])
+      fix.y <- as.integer(x[colnames(fix)=='y'])
       ia.t  <- as.integer(areas[, 1])
       ia.b  <- as.integer(areas[, 2])
       ia.l  <- as.integer(areas[, 3])

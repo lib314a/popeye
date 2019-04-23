@@ -6,6 +6,7 @@ as.popeye <- function(
   , ia_tables_header = F
   , start_flag = 'TRIALID'
   , corrected = FALSE
+  , ia_binded = FALSE
 ){
   # This function concatenates eye tracking data, table of coordinates
   #
@@ -25,7 +26,7 @@ as.popeye <- function(
   # If file names are fed in...
   if (is.file(eye_data))
 
-    # ... read em.
+    # ... read 'em
     asc <- lapply(eye_data, read.asc.file, start_flag = start_flag)
 
   # If ASC data are fed in...
@@ -137,31 +138,30 @@ as.popeye <- function(
   # Check ia tables ------------------------------------------------------------
   message("Setting the first four columns of IA tables as (t)op, (b)ottom, (l)eft, (r)ight...")
 
-  if(is.file(ia_tables)){
+  if (is.file(ia_tables)) {
     # Check file types
     suffices <- vapply(
       strsplit(ia_tables, split = '\\.'),
       function(x) x[length(x)],
       character(1)
     )
-    if(sum(suffices == tableType) == length(suffices)){
+    if (sum(suffices == tableType) == length(suffices)) {
       ia <- lapply(ia_tables, read.csv, header = ia_tables_header)
-    }else{
+    } else {
       message("Setting the first four columns of IA tables as (t)op, (b)ottom, (l)eft, (r)ight...")
       return(invisible())
     }
-  }else{
+  } else
     ia <- ia_tables
-  }
 
   # Check if the first four columns are (t)op, (b)ottom, (l)eft, (r)ight, or
   # change them to 
   ia <- lapply(
     ia,
     function(x){
-      if(sum(startIaName %in% colnames(x)) == 4){
+      if (sum(startIaName %in% colnames(x)) == 4)
         x[, order(match(colnames(x), startIaName))]
-      }else{
+      else {
         colnames(x)[1:4] <- startIaName
         x
       }
@@ -201,7 +201,11 @@ as.popeye <- function(
     , start_flag = start_flag
   )
   # TODO: Read ASC files from disk rather than store them in the object
-  class(r) <- c('popeye', if(!corrected) 'uncorrected' else 'corrected')
+  class(r) <- c(
+    'popeye'
+    , if (!corrected) 'uncorrected' else 'corrected'
+    , if (!ia_binded) 'IA.no'       else 'IA.yes'
+  )
 
   return(r)
 }
