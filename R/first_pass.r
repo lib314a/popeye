@@ -25,7 +25,7 @@ first_pass <- function(aligns)
       inde 
     }
   )
-  inde <- unlist(inde)
+  inde <- c(1, unlist(inde))
 
   r <- rep(FALSE, length(aligns))
   r[inde] <- TRUE

@@ -1,1 +1,1 @@
-preprocess <- function(x) UseMethod("preprocess", x)
+preprocess <- function(x, ...) UseMethod("preprocess", x)
