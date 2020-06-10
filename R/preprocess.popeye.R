@@ -70,7 +70,7 @@ preprocess.popeye <- function(
       )
 
       # Find the best-fitting lines
-      line_ret[[t]] <- fit_lines(
+      line_ret[[t]] <- fit.lines(
         start_pts[[t]],
         fix_data_trial,
         keep_y_var,
@@ -111,7 +111,7 @@ preprocess.popeye <- function(
     class(x)[class(x) == 'IA.no'] <- 'IA.yes'
   }
 
-  # Change status from uncorrected to corrcted
+  # Change status from uncorrected to corrected
   class(x)[class(x) == 'uncorrected'] <- 'corrected'
   return(x)
 }

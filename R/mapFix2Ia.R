@@ -59,6 +59,9 @@ mapFix2Ia <- function(fix, areas, labels)
 
   # Returns
   r <- cbind(fix, r.labels)
+
+  if (iaColName%in%names(r))
+    iaColName <- paste0(iaColName, ".new")
   names(r)[ncol(r)] <- iaColName
   return(r)
 }
