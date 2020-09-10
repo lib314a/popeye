@@ -15,5 +15,5 @@ check.three.ellipsis <- function(..., target.arg)
       source.arg[[i]] <- eval(parse(text = r))
     }
 
-  return(source.arg)
+  return(source.arg[target.arg])
 }

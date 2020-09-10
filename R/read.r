@@ -1,153 +1,55 @@
-read.asc <- function(asc_lines, start_flag)
-{
-  # Constants
-  col_range <- 5:8
-
-  # Read in the file
-  f <- readLines(asc_lines)
-
-  # Get trial start and end
-  trial_id_start <- which(grepl('TRIALID', f))
-  trial_start <- which(grepl(start_flag, f))
-  trial_end <- which(grepl('END', f))
-
-  # Handle situations where two trials starts are not
-  # separated by trial ends (e.g., due to aborted trials).
-  # Get rid of first one.
-
-  # Get rid of errant TRIALIDs
-  marked_starts <- numeric()
-  start_index <- 1
-  end_index <- 1
-  while (start_index < length(trial_id_start)) {
-    if (trial_id_start[start_index + 1] < trial_end[end_index]) {
-      marked_starts <- c(marked_starts, start_index)
-    } else {
-      end_index <- end_index + 1
-    }
-    start_index <- start_index + 1
+## Fixations are recorded as start by SFIX and end by EFIX
+get.fixations <- function (x, col.range = 5:8) {
+  message("Position: ", x[1])
+  t.trial.start <- find.time(x[1])
+  t.trial.end <- find.time(x[length(x)])
+  fix <- correct.err.flags(grep("SFIX", x), grep("EFIX", x))
+  ## When fixations lose totally
+  if (nrow(fix) == 0) {
+    message("No fixation found in this trial!")
+    return(data.frame(dur = NA, x = NA, y = NA, pupil = NA, onset = NA, type = NA))
   }
+  fix.starts <- fix$starts
+  fix.ends <- fix$ends
+  t.fix.starts <- sapply(x[fix.starts], find.time)
+  t.fix.ends <- sapply(x[fix.ends], find.time)
+  ## get duration, coordinates and pupil sizes values of the fixation
+  v.fix <- sapply(fix.ends, function (i) as.numeric(split.line(x[i])[col.range]))
+  v.fix <- as.data.frame(t(v.fix))
+  names(v.fix) <- c('dur', 'x', 'y', 'pupil')
+  v.fix$onset <- t.fix.starts - t.trial.start
+  ## Originally mark all fixations as keepers
+  v.fix$type <- 'keep'
+  ## Mark any fixations before the start flag as not in trial (NIT)
+  v.fix$type[t.fix.ends < t.trial.start] <- "nit"
+  ## Find the first full fixation after the start flag, mark others as partial
+  ## (part)
+  v.fix$type[t.fix.starts<t.trial.start & t.fix.ends>t.trial.start] <- "part"
+  v.fix
+}
 
-  if (length(marked_starts) > 0)
-    trial_id_start <- trial_id_start[-marked_starts]
-
-  # Get rid of errant start_flags
-  marked_flags <- numeric()
-  flag_index <- 1
-  end_index <- 1
-  while (flag_index < length(trial_id_start)) {
-    if (trial_start[flag_index + 1] < trial_end[end_index]) {
-      marked_flags <- c(marked_flags, flag_index)
-    } else {
-      end_index <- end_index + 1
-    }
-    flag_index <- flag_index + 1
-  }
-
-  if (length(marked_flags) > 0)
-    trial_start <- trial_start[-marked_flags]
-
-  # Number of trials
-  n_trials <- length(trial_start)
-
-  # Initialize fixation data
-  fix_data <- list()
-
-  # Keep duration data in a vector to get summary info
-  all_dur <- numeric(0)
-
-  # Analyze each trial
-  for (t in 1:n_trials) {
-    # Data for one trial
-    trial_data  <- f[trial_id_start[t]:trial_end[t]]
-
-    # Trial start time ----------------------------------------------------------- Bing
-    trial_start_t <- trial_data[1]
-    trial_start_t <- gsub('\\s+', ' ', trial_start_t)
-    trial_start_t <- strsplit(trial_start_t, ' ')
-    trial_start_t <- as.numeric(trial_start_t[[1]][2])
-
-    # Find the start and end of the fixations
-    trial_start_fix <- which(grepl('SFIX', trial_data))
-    trial_end_fix <- which(grepl('EFIX', trial_data))
-
-    # Handle situations where two start fixations are not
-    # separated by end fixations (e.g., due to track loss).
-    # Get rid of first one.
-    marked_starts <- numeric()
-    start_index <- 1
-    end_index <- 1
-    while (start_index < length(trial_start_fix)) {
-      if (trial_start_fix[start_index + 1] < trial_end_fix[end_index]) {
-        marked_starts <- c(marked_starts, start_index)
-      } else {
-        end_index <- end_index + 1
-      }
-      start_index <- start_index + 1
-    }
-
-    if(length(marked_starts) > 0) # -------------------------------------------- Bing
-      trial_start_fix <- trial_start_fix[-marked_starts]
-
-    # Onsets for fixations ----------------------------------------------------- Bing
-    onsets <- trial_data[trial_start_fix]
-    onsets <- gsub('\\s+', ' ', onsets)
-    onsets <- strsplit(onsets, ' ')
-    onsets <- vapply(onsets, function(x) as.numeric(x[3]) - trial_start_t, numeric(1))
-
-    # Fixations for a trial and get rid of extra white space
-    trial_fix <- trial_data[trial_end_fix]
-    trial_fix <- gsub('\\s+', ' ', trial_fix)
-    trial_fix <- strsplit(trial_fix, ' ')
-
-    # Fixation duration, location, pupil size
-    n_fix <- length(trial_fix)
-
-    # n_fixations x 4 (duration, x, y, pupil_size)
-    fix_data_trial <- matrix(NA, nrow = n_fix, ncol = 4)
-
-    for (i in 1:n_fix) {
-      fix_data_trial[i, 1:4] <- as.numeric(trial_fix[[i]][col_range])
-    }
-
-    fix_data_trial <- data.frame(fix_data_trial)
-    names(fix_data_trial) <- c('dur', 'x', 'y', 'pupil')
-
-    # Originally mark all fixations as keepers
-    fix_data_trial$type = 'keep'
-
-    # Mark any fixations before the start flag as not in trial (NIT)
-    fix_data_trial$type[trial_end_fix < (trial_start[t] - trial_id_start[t] + 1)] <-
-      'nit'
-
-    # Find the first full fixation after the start flag, mark others as partial (part)
-    fix_data_trial$type[trial_start_fix < (trial_start[t] - trial_id_start[t] + 1) &
-                          trial_end_fix > (trial_start[t] - trial_id_start[t] + 1)] <-
-      'part'
-
-    # Add onset col ------------------------------------------------------------ Bing
-    fix_data_trial$onset <- onsets
-
-    # Store duration information
-    all_dur <- append(all_dur, fix_data_trial$dur)
-
-    fix_data[[t]] <- fix_data_trial
-
-  }
-
-  # Put all data together in one list
+read.asc <- function(asc.lines, start_flag = "START", exclude.trials = NULL, ncore = 3) {
+  ## Read in the file
+  f <- readLines(asc.lines)
+  ## Get trial start and end
+  trial.flags <- correct.err.flags(grep("TRIALID", f), grep("END", f))
+  trial.id.start <- trial.flags$starts
+  trial.end <- trial.flags$ends
+  ## remove trials listed in exclude.trials
+  if (!is.null(exclude.trials) && length(exclude.trials)!=0) {
+    trial.id.start <- trial.id.start[-exclude.trials]
+    trial.end <- trial.end[-exclude.trials]}
+  fix.data <- lapply(
+    lapply(seq(trial.end), function (i) f[trial.id.start[i]:trial.end[i]]),
+    get.fixations)
+  ## Put all data together in one list
   asc_data <- list()
-
-  asc_data$fix_data <- fix_data
-  asc_data$n_trials <- n_trials
-  asc_data$dur_summary <- fivenum(all_dur)
-
-  asc_data$trial_id_start <- trial_id_start
-  asc_data$trial_start <- trial_start
-  asc_data$trial_end <- trial_end
-
+  asc_data$fix_data <- fix.data
+  asc_data$n_trials <- length(fix.data)
+  asc_data$dur_summary <- fivenum(unlist(lapply(fix.data, function (y) y$dur)))
+  asc_data$trial.id.start <- trial.id.start
+  asc_data$trial.end <- trial.end
   return(asc_data)
-
 }
 
 ### ----------------------------------------------------------------------------

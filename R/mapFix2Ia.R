@@ -19,6 +19,20 @@ mapFix2Ia <- function(fix, areas, labels)
   #   A data frame of n+1 columns: n is the number of fix tables, plus the
   #   serial/line number of the corresponding IA.
 
+  ## if no complete fixation in a trial
+  if (is.null(fix)) {
+    message("Empty trial found and skipped...")
+    return (fix)
+  }
+  if (nrow(fix) == 0) {
+    message("Empty trial found and skipped...")
+    return (fix)
+  }
+  if (nrow(fix[!is.na(fix$x) & !is.na(fix$x), ]) == 0) {
+    message("Empty trial found and skipped...")
+    return (fix)
+  }
+
   # If *fix is a vector (single fixation), transpose it
   if(is.vector(fix))
     fix   <- t(fix)
@@ -35,7 +49,6 @@ mapFix2Ia <- function(fix, areas, labels)
       ia.b  <- as.integer(areas[, 2])
       ia.l  <- as.integer(areas[, 3])
       ia.r  <- as.integer(areas[, 4])
-
 
       # Get ia index
       ind   <- which(ia.l<=fix.x & ia.r>=fix.x & ia.b>=fix.y & ia.t<=fix.y)

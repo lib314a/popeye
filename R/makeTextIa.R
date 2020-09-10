@@ -21,12 +21,18 @@ makeTextIa <- function(
     return(NULL)
   }
 
-  # Define the interest layer. Usually it's the alpha layer or the sum of RGB
-  # layers.
-  alph <- pict[, , 4] # The 4th value in 3rd dim is alpha value
-  #alph <- apply(pict, c(1,2), mean)
-  vertSum <- apply(alph, 1, mean)
-  vertdiff <- diff(vertSum < 0.01)
+  flattenImag <- function(imag, scale = F){
+    imag <-
+      .2126*imag[, , 1] + # Red
+      .7152*imag[, , 2] + # Green
+      .0722*imag[, , 3] # Blue
+    if(scale == T) imag <- imag/max(imag)
+    return(imag)
+  }
+
+  pict <- flattenImag(pict)
+  vertMean <- apply(pict, 1, mean)
+  vertdiff <- diff(vertMean < 1)
   vertstarpoin <- which(vertdiff == 1)
   vertEndPoin <- which(vertdiff == -1)
   
@@ -34,8 +40,8 @@ makeTextIa <- function(
   l <- lapply(
     1:length(vertstarpoin)
     , function(x){
-      m <- alph[vertstarpoin[x]:vertEndPoin[x],]
-      horidiff <- diff(apply(m, 2, mean) < 0.1)
+      m <- pict[vertstarpoin[x]:vertEndPoin[x],]
+      horidiff <- diff(apply(m, 2, mean) < 1)
       horistarpoin <- which(horidiff == 1)
       horiEndPoin <- which(horidiff == -1)
       # remove areas that have a gap smaller than *gapThre*

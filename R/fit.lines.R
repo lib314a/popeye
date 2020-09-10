@@ -14,6 +14,12 @@ fit.lines <- function(start_pts,
   ## Intitial parameter values (slope, vertical offset, sd)
   init_params = c(0, 0, 0)
 
+  ## when trial without any fixation given
+  if (nrow(na.omit(fix_data_trial)) == 0) {
+    message("No fixation found before fitting lines!")
+    return (fix_data_trial)
+  }
+
   create_lines <- function(params,
                            fix_data,
                            start_pts,

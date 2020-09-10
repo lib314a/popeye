@@ -20,7 +20,9 @@ as.popeye <- function(eye.file,
   ## See whether eye file is an ASC file or an fixation report
   file.extension <- substring(eye.file, nchar(eye.file) - 2, nchar(eye.file))
   if (file.extension == "asc")
-    data <- read.asc(eye.file, ...)
+    data <- do.call(
+      function(...) read.asc(eye.file, ...),
+      check.three.ellipsis(..., target.arg = c("start_flag", "exclude.trials")))
   else if (file.extension == "txt")
     data <- read.fix.report(eye.file)
   else
@@ -49,8 +51,17 @@ as.popeye <- function(eye.file,
   else
     data <- within(data, names(fix_data) <- paste0(stimPrefix, trial_id))
 
-  ## Set AOI
-  aoi <- lapply(aoi.file, read.csv, header = ia_tables_header)
+  ## Set AOI, if aoi.file is a vector of file names, read them; else, set them
+  ## as aoi
+  if (is.character(aoi.file))
+    if (file.exists(aoi.file[1]))
+      aoi <- lapply(aoi.file, read.csv, header = ia_tables_header)
+    else
+      stop("AOI files not found!")
+  else
+    aoi <- lapply(
+      aoi.file, function (x) if (!is.data.frame(x)) as.data.frame(x) else x)
+
   ## Check if the first four columns are (t)op, (b)ottom, (l)eft, (r)ight, or
   ## change them to
   message("Setting the first four columns of IA tables as: Top Bottom Left Right...")
@@ -63,7 +74,7 @@ as.popeye <- function(eye.file,
       table[, order(match(colnames(table), columns))]
   aoi <- lapply(aoi, function(x) check.tblr(x, ...))
   ## Set epoch numbers
-  names(aoi) <- names(data$fix_data)
+  #names(aoi) <- names(data$fix_data)
 
   ## calculate start points based on aoi
   start.points <- lapply(aoi, function(x) {
@@ -102,8 +113,9 @@ as.popeye <- function(eye.file,
     data$fix_data_FA <- lapply(data$fix_data_FA, function(x) {
       x$y <- x$y_new
       x$y_new <- NULL
-      x})}
-  data <- within(data, names(fix_data_FA) <- names(fix_data))
+      x})
+    data <- within(data, names(fix_data_FA) <- names(fix_data))
+  }
 
   data$aoi <- aoi
   class(data) <- "popeye"
